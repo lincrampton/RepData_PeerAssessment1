@@ -1,20 +1,104 @@
-# Reproducible Research: Peer Assessment 1
+Reproducible Research, Peer Assessment #1
+Coursera, Johns Hopkins, Prof. Peng
 
-
+========================================================
 ## Loading and preprocessing the data
+### Load libraries
+```{r packages_used, echo=T}
+library('ggplot2')
+library('RColorBrewer')
+library('lubridate')
+```
+### Acquire Data
+```{r fetch_data, echo=TRUE}
+sourceUrl = 'https://d396qusza40orc.cloudfront.net'
+sourceFileName = 'repdata_data_activity.zip'
+zipFile = "activity.zip"
+csvFile = 'activity.csv'
+### readData reads in datafile if it exists, or recreates it as much as necessary
+###          if downloading, notes the download date in file 'dateUrlDownloaded.txt'
+readData = function() {
+  if(!file.exists(csvFile)) { # if the csvFile exists, move on
+    		if(!file.exists(zipFile)) { # only download when no zipFile in dir
+        		download.file(sourceUrl, destfile=zipFileName, method="curl")
+			sink('./dateUrlDownloaded.txt')
+			downloadDate = date()   
+			sink()
+		} #end download sourceUrl
+		unzip(zipFile)
+	} 
+    	dataIn = read.csv(csvFile, header=T, sep=',') 
+} 
 
-
-
-## What is mean total number of steps taken per day?
-
-
+```
+### Load and Examine Data
+```{r examine_data, echo=T}
+activityData = readData()
+names(activityData)
+str(activityData)
+summary(activityData)
+dim(activityData)
+summary(activityData$steps)
+```
+# What is the mean total number of steps taken per day?
+```{r total_steps, echo=T}
+dailySteps <- aggregate(steps ~ date, data=activityData, FUN=sum)
+meanDailySteps = mean(dailySteps$steps)
+medianDailySteps = median(dailySteps$steps)
+maxStepsPerDay = dailySteps$day[which.max(dailySteps$steps)]
+intervalSteps <- aggregate(steps ~ interval, data=activityData, FUN=sum)
+meanIntervalSteps = mean(intervalSteps$steps)
+medianIntervalSteps = median(intervalSteps$steps)
+maxStepsPerInterval = intervalSteps$interval[which.max(intervalSteps$steps)]
+```
 
 ## What is the average daily activity pattern?
+```{r ave_activity, echo=T}
+### plot number of steps per day
+barplot(dailySteps$steps, names.arg=dailySteps$date, xlab="Date", ylab="Steps",cex.names=0.5,col='blue')
 
+### plot number of steps per time interval
+barplot(intervalSteps$steps, names.arg=intervalSteps$interval, col='blue', xlab="Time Interval", ylab="Steps", cex.names=0.5, main='Steps per Interval over the Course of a Day')
 
-
+```
 ## Imputing missing values
+```{r spline_NAs, echo=T}
+sum(is.na(activityData))
+sum(is.na(activityData$steps))
+sum(is.na(activityData$date))
+sum(is.na(activityData$interval))
+missingVals = is.na(activityData$steps)
+str(missingVals)
 
-
-
+activityData <- merge(activityData, intervalSteps, by="interval", suffixes=c("",".splined"))
+names(activityData)
+activityData$steps[missingVals] <- activityData$steps.splined[missingVals]
+splinedDailySteps <- aggregate(steps.splined ~ date, data=activityData, FUN=sum)
+sum(is.na(splinedDailySteps))
+meanSplinedDailySteps = mean(splinedDailySteps$steps)
+medianSplinedDalySteps = median(splinedDailySteps$steps)
+```
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r weekends_different, echo=T}
+is.weekend = function(date){
+  if (wday(date, label=T) %in% c("Sat", "Sun")){ 
+    "Weekend"}
+  else {
+    "Weekday"}
+}
+activityData$isWeekend = as.factor(sapply(activityData$date, is.weekend))
+names(activityData)
+
+weekendData = subset(activityData, isWeekend == 'Weekend')
+weekdayData = subset(activityData, isWeekend == 'Weekday')
+par(mfrow=c(2,1))
+plot(weekendData$interval, weekendData$steps, type='h', xlab="Time Interval", ylab="Steps per Interval", col='blue', main='Weekend Data')
+plot(weekdayData$interval, weekdayData$steps, type='h', xlab="Time Interval", ylab="Steps per Interval", col='red', main='Weekday Data')
+```
+
+## Report Date
+```{r document_report_date, echo=T}
+### Document report date
+reportDate = date()
+```
+
